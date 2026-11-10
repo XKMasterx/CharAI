@@ -224,7 +224,7 @@ function updateUIWithSettings() {
     DOM.sidebarProviderStatus.textContent = providerNames[prov] || prov;
   }
 
-  const isGlobalNsfw = state.settings.nsfw_mode in ('true', true, '1');
+  const isGlobalNsfw = ['true', true, '1'].includes(state.settings.nsfw_mode);
   if (DOM.sidebarNsfwIndicator) {
     DOM.sidebarNsfwIndicator.style.display = isGlobalNsfw ? 'inline-block' : 'none';
   }
@@ -239,11 +239,11 @@ function updateUIWithSettings() {
   DOM.setGeminiModel.value = state.settings.gemini_model || 'gemini-1.5-flash';
   DOM.setOllamaUrl.value = state.settings.ollama_base_url || 'http://localhost:11434';
   DOM.setOllamaModel.value = state.settings.ollama_model || 'llama3.2';
-  DOM.setOpenaiUrl.value = state.settings.openai_base_url || 'https://api.openai.com/v1';
+  DOM.setOpenaiUrl.value = state.settings.openai_base_url || 'https://api.groq.com/openai/v1';
   DOM.setOpenaiKey.value = state.settings.openai_api_key || '';
-  DOM.setOpenaiModel.value = state.settings.openai_model || 'gpt-4o-mini';
+  DOM.setOpenaiModel.value = state.settings.openai_model || 'qwen/qwen3.8-27b';
 
-  DOM.setNsfwMode.checked = state.settings.nsfw_mode in ('true', true, '1');
+  DOM.setNsfwMode.checked = ['true', true, '1'].includes(state.settings.nsfw_mode);
   DOM.setRoleplayTone.value = state.settings.roleplay_tone || 'standard';
 
   if (DOM.setLanguage) {

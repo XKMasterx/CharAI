@@ -308,8 +308,8 @@ def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, A
     elif provider == "ollama":
         yield from stream_ollama(character, chat_history, settings, temperature)
     elif provider == "openai":
-        key = settings.get("openai_api_key", "").strip()
-        base_url = settings.get("openai_base_url", "").strip()
+        key = settings.get("openai_api_key", "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
+        base_url = settings.get("openai_base_url", "").strip() or os.environ.get("OPENAI_BASE_URL", "").strip()
         is_local = "localhost" in base_url or "127.0.0.1" in base_url
         if not key and not is_local:
             yield from stream_simulator_response(character, chat_history, settings, missing_key="OpenAI / API-Schlüssel")
@@ -525,9 +525,9 @@ def stream_ollama(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
         yield f"*(Ollama-Fehler: {str(e)})*"
 
 def stream_openai(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
-    api_key = settings.get("openai_api_key", "").strip()
-    base_url = settings.get("openai_base_url", "https://api.openai.com/v1").rstrip("/")
-    model = settings.get("openai_model", "gpt-4o-mini").strip()
+    api_key = settings.get("openai_api_key", "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
+    base_url = (settings.get("openai_base_url", "").strip() or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")).rstrip("/")
+    model = (settings.get("openai_model", "").strip() or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")).strip()
     system_prompt = format_system_prompt(character, settings, chat_history)
 
     messages = [{"role": "system", "content": system_prompt}]

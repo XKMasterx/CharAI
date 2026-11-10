@@ -141,12 +141,12 @@ def init_db():
 
 def seed_settings(cursor):
     defaults = {
-        "provider": "simulator",
+        "provider": os.environ.get("DEFAULT_AI_PROVIDER", "openai" if os.environ.get("OPENAI_API_KEY") else "simulator"),
         "gemini_api_key": "",
         "gemini_model": "gemini-1.5-flash",
-        "openai_api_key": "",
-        "openai_base_url": "https://api.openai.com/v1",
-        "openai_model": "gpt-4o-mini",
+        "openai_api_key": os.environ.get("OPENAI_API_KEY", ""),
+        "openai_base_url": os.environ.get("OPENAI_BASE_URL", "https://api.groq.com/openai/v1"),
+        "openai_model": os.environ.get("OPENAI_MODEL", "qwen/qwen3.8-27b"),
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.2",
         "user_name": "Reisender",
