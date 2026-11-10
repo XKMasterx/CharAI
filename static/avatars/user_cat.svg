@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg-cat" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg-cat)"/>
+  <!-- Ears -->
+  <polygon points="26,45 34,22 50,38" fill="#1e293b"/>
+  <polygon points="29,42 35,26 47,38" fill="#f43f5e"/>
+  <polygon points="74,45 66,22 50,38" fill="#1e293b"/>
+  <polygon points="71,42 65,26 53,38" fill="#f43f5e"/>
+  <!-- Head -->
+  <circle cx="50" cy="56" r="23" fill="#1e293b"/>
+  <!-- Big Anime Eyes -->
+  <ellipse cx="40" cy="53" rx="4.5" ry="6" fill="#facc15"/>
+  <ellipse cx="60" cy="53" rx="4.5" ry="6" fill="#facc15"/>
+  <ellipse cx="40" cy="53" rx="2" ry="5" fill="#000"/>
+  <ellipse cx="60" cy="53" rx="2" ry="5" fill="#000"/>
+  <circle cx="41.5" cy="50.5" r="1.5" fill="#fff"/>
+  <circle cx="61.5" cy="50.5" r="1.5" fill="#fff"/>
+  <!-- Nose & Mouth -->
+  <polygon points="48,61 52,61 50,63" fill="#f43f5e"/>
+  <path d="M47 64 Q 50 67 53 64" stroke="#e2e8f0" stroke-width="1.5" fill="none"/>
+  <!-- Whiskers -->
+  <line x1="28" y1="59" x2="38" y2="61" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="27" y1="65" x2="38" y2="64" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="72" y1="59" x2="62" y2="61" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="73" y1="65" x2="62" y2="64" stroke="#94a3b8" stroke-width="1.5"/>
+</svg>

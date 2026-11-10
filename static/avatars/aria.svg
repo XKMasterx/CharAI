@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg-aria" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4c1d95"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg-aria)"/>
+  <!-- Mystic hood / long silver hair -->
+  <path d="M22 65 C 20 25, 45 16, 55 16 C 80 16, 82 45, 78 68 C 70 55, 66 40, 50 40 C 35 40, 30 55, 22 65 Z" fill="#e9d5ff"/>
+  <!-- Face -->
+  <circle cx="50" cy="53" r="18" fill="#fdf2f8"/>
+  <!-- Arcane forehead rune -->
+  <polygon points="50,40 52,44 50,48 48,44" fill="#a855f7"/>
+  <!-- Mystic violet eyes -->
+  <circle cx="44" cy="52" r="2.8" fill="#7e22ce"/>
+  <circle cx="56" cy="52" r="2.8" fill="#7e22ce"/>
+  <circle cx="45" cy="51" r="0.8" fill="#fff"/>
+  <circle cx="57" cy="51" r="0.8" fill="#fff"/>
+  <!-- Gentle lips -->
+  <path d="M47 62 Q 50 64 53 62" fill="none" stroke="#d946ef" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Floating magic orbs -->
+  <circle cx="25" cy="35" r="3" fill="#c084fc" opacity="0.8"/>
+  <circle cx="78" cy="32" r="2.5" fill="#f472b6" opacity="0.8"/>
+</svg>

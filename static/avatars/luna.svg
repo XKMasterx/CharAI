@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg-luna" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="cyber-hair" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg-luna)"/>
+  <!-- Cyberpunk neon hair -->
+  <path d="M22 55 C 20 28, 42 16, 68 18 C 84 22, 85 45, 80 62 L 72 40 C 60 28, 38 28, 28 48 Z" fill="url(#cyber-hair)"/>
+  <!-- Face -->
+  <path d="M34 42 L66 42 L62 70 Q 50 78 38 70 Z" fill="#ffedd5"/>
+  <!-- Cybernetic eye (left) -->
+  <circle cx="43" cy="52" r="4.5" fill="#0891b2"/>
+  <circle cx="43" cy="52" r="2.2" fill="#22d3ee"/>
+  <circle cx="43" cy="52" r="1" fill="#fff"/>
+  <!-- Cyber markings under left eye -->
+  <path d="M39 58 L 41 64 L 45 64" fill="none" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Natural eye (right) -->
+  <circle cx="57" cy="52" r="3" fill="#3b0764"/>
+  <circle cx="58" cy="51" r="1" fill="#fff"/>
+  <!-- Smirk -->
+  <path d="M47 64 Q 52 66 56 63" fill="none" stroke="#be185d" stroke-width="2" stroke-linecap="round"/>
+</svg>

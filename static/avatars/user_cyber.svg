@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg-cyber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg-cyber)"/>
+  <!-- Cyber Jacket -->
+  <path d="M25 88 Q 50 70 75 88 Z" fill="#0f172a"/>
+  <!-- Face -->
+  <circle cx="50" cy="50" r="20" fill="#fef08a"/>
+  <!-- Spiky hair -->
+  <polygon points="32,36 40,20 45,32 52,16 60,30 68,22 70,38" fill="#06b6d4"/>
+  <!-- Neon Visor / Cyber Glasses -->
+  <path d="M34 46 L66 46 L63 56 L37 56 Z" fill="#10b981"/>
+  <line x1="38" y1="51" x2="62" y2="51" stroke="#a7f3d0" stroke-width="2"/>
+  <!-- Smirk -->
+  <path d="M47 62 Q 53 65 56 61" stroke="#0f172a" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Cyber Ear implant -->
+  <circle cx="30" cy="51" r="3" fill="#06b6d4"/>
+  <circle cx="30" cy="51" r="1.5" fill="#fff"/>
+</svg>
