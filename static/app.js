@@ -244,37 +244,28 @@ function updateUIWithSettings() {
   const userName = state.settings.user_name || 'Reisender';
   DOM.sidebarUserName.textContent = userName;
 
-  const prov = state.settings.provider || 'simulator';
-  if (typeof getTranslation === 'function') {
-    DOM.sidebarProviderStatus.textContent = getTranslation('provider_' + prov, lang) || `Modus: ${prov}`;
-  } else {
-    const providerNames = {
-      simulator: 'Simulation (Offline)',
-      gemini: 'Google Gemini',
-      ollama: 'Ollama (Lokal)',
-      openai: 'OpenAI / Custom API'
-    };
-    DOM.sidebarProviderStatus.textContent = providerNames[prov] || prov;
-  }
+  DOM.sidebarProviderStatus.textContent = '⚡ Groq (Aktiv)';
+  DOM.sidebarProviderStatus.style.color = '#f97316';
 
   const isGlobalNsfw = ['true', true, '1'].includes(state.settings.nsfw_mode);
   if (DOM.sidebarNsfwIndicator) {
     DOM.sidebarNsfwIndicator.style.display = isGlobalNsfw ? 'inline-block' : 'none';
   }
 
+  const prov = state.settings.provider || 'openai';
   const radios = document.getElementsByName('provider');
   for (const r of radios) {
     if (r.value === prov) r.checked = true;
   }
   handleProviderFieldsVisibility(prov);
 
-  DOM.setGeminiKey.value = state.settings.gemini_api_key || '';
-  DOM.setGeminiModel.value = state.settings.gemini_model || 'gemini-1.5-flash';
-  DOM.setOllamaUrl.value = state.settings.ollama_base_url || 'http://localhost:11434';
-  DOM.setOllamaModel.value = state.settings.ollama_model || 'llama3.2';
-  DOM.setOpenaiUrl.value = state.settings.openai_base_url || 'https://api.groq.com/openai/v1';
-  DOM.setOpenaiKey.value = state.settings.openai_api_key || '';
-  DOM.setOpenaiModel.value = state.settings.openai_model || 'qwen/qwen3.8-27b';
+  if (DOM.setGeminiKey) DOM.setGeminiKey.value = state.settings.gemini_api_key || '';
+  if (DOM.setGeminiModel) DOM.setGeminiModel.value = state.settings.gemini_model || 'gemini-1.5-flash';
+  if (DOM.setOllamaUrl) DOM.setOllamaUrl.value = state.settings.ollama_base_url || 'http://localhost:11434';
+  if (DOM.setOllamaModel) DOM.setOllamaModel.value = state.settings.ollama_model || 'llama3.2';
+  if (DOM.setOpenaiUrl) DOM.setOpenaiUrl.value = state.settings.openai_base_url || 'https://api.groq.com/openai/v1';
+  if (DOM.setOpenaiKey) DOM.setOpenaiKey.value = state.settings.openai_api_key || '';
+  if (DOM.setOpenaiModel) DOM.setOpenaiModel.value = state.settings.openai_model || 'qwen/qwen3.8-27b';
 
   DOM.setNsfwMode.checked = ['true', true, '1'].includes(state.settings.nsfw_mode);
   DOM.setRoleplayTone.value = state.settings.roleplay_tone || 'standard';
@@ -313,9 +304,9 @@ function updateUIWithSettings() {
 }
 
 function handleProviderFieldsVisibility(provider) {
-  DOM.settingsGeminiFields.style.display = provider === 'gemini' ? 'flex' : 'none';
-  DOM.settingsOllamaFields.style.display = provider === 'ollama' ? 'flex' : 'none';
-  DOM.settingsOpenaiFields.style.display = provider === 'openai' ? 'flex' : 'none';
+  if (DOM.settingsGeminiFields) DOM.settingsGeminiFields.style.display = 'none';
+  if (DOM.settingsOllamaFields) DOM.settingsOllamaFields.style.display = 'none';
+  if (DOM.settingsOpenaiFields) DOM.settingsOpenaiFields.style.display = 'none';
 }
 
 // -------------------------------------------------------------
@@ -2030,16 +2021,17 @@ function setupEventListeners() {
   // Save Settings Form
   DOM.formSettings.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const selectedProvider = document.querySelector('input[name="provider"]:checked').value;
+    const providerRadio = document.querySelector('input[name="provider"]:checked');
+    const selectedProvider = providerRadio ? providerRadio.value : 'openai';
     const settingsPayload = {
-      provider: selectedProvider,
-      gemini_api_key: DOM.setGeminiKey.value.trim(),
-      gemini_model: DOM.setGeminiModel.value,
-      ollama_base_url: DOM.setOllamaUrl.value.trim(),
-      ollama_model: DOM.setOllamaModel.value.trim(),
-      openai_base_url: DOM.setOpenaiUrl.value.trim(),
-      openai_api_key: DOM.setOpenaiKey.value.trim(),
-      openai_model: DOM.setOpenaiModel.value.trim(),
+      provider: 'openai',
+      openai_base_url: (DOM.setOpenaiUrl ? DOM.setOpenaiUrl.value.trim() : '') || (state.settings.openai_base_url || 'https://api.groq.com/openai/v1'),
+      openai_api_key: (DOM.setOpenaiKey ? DOM.setOpenaiKey.value.trim() : '') || (state.settings.openai_api_key || ''),
+      openai_model: (DOM.setOpenaiModel ? DOM.setOpenaiModel.value.trim() : '') || (state.settings.openai_model || 'qwen/qwen3.8-27b'),
+      gemini_api_key: DOM.setGeminiKey ? DOM.setGeminiKey.value.trim() : '',
+      gemini_model: DOM.setGeminiModel ? DOM.setGeminiModel.value : 'gemini-1.5-flash',
+      ollama_base_url: DOM.setOllamaUrl ? DOM.setOllamaUrl.value.trim() : 'http://localhost:11434',
+      ollama_model: DOM.setOllamaModel ? DOM.setOllamaModel.value.trim() : 'llama3.2',
       nsfw_mode: DOM.setNsfwMode.checked ? 'true' : 'false',
       roleplay_tone: DOM.setRoleplayTone.value,
       language: DOM.setLanguage ? DOM.setLanguage.value : 'auto',

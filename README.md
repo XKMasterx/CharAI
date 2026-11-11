@@ -1,5 +1,3 @@
-https://charai-mus8.onrender.com
-
 ---
 title: CharAI
 emoji: 🎭

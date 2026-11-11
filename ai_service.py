@@ -292,15 +292,8 @@ def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, A
     env_provider = os.environ.get("DEFAULT_AI_PROVIDER", "").strip().lower()
 
     provider = settings.get("provider", "").lower()
-    if not provider or provider == "simulator":
-        if env_provider:
-            provider = env_provider
-        elif env_openai_key:
-            provider = "openai"
-        elif env_gemini_key:
-            provider = "gemini"
-        else:
-            provider = "simulator"
+    if not provider or provider in ("simulator", "ollama", ""):
+        provider = "openai"
     
     if provider == "gemini":
         key = settings.get("gemini_api_key", "").strip() or env_gemini_key
