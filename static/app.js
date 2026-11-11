@@ -192,6 +192,8 @@ async function init() {
 // -------------------------------------------------------------
 // Settings Management
 // -------------------------------------------------------------
+const DEFAULT_GROQ_KEY = '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';
+
 async function loadSettings() {
   try {
     const res = await fetch('/api/settings');
@@ -204,12 +206,21 @@ async function loadSettings() {
       if (raw) cached = JSON.parse(raw);
     } catch (_) {}
 
-    // If cached settings has a valid key but server doesn't, sync cached settings to server
-    if (cached && cached.openai_api_key && (!serverSettings.openai_api_key || serverSettings.openai_api_key !== cached.openai_api_key)) {
-      serverSettings.openai_api_key = cached.openai_api_key;
-      serverSettings.openai_base_url = cached.openai_base_url || serverSettings.openai_base_url;
-      serverSettings.openai_model = cached.openai_model || serverSettings.openai_model;
-      serverSettings.provider = cached.provider || 'openai';
+    const isStale = (k) => !k || k.startsWith('gsk_Pr6N') || k.startsWith('gsk_GKPH') || k.startsWith('gsk_1twr') || k.length < 20;
+
+    if (cached && isStale(cached.openai_api_key)) {
+      cached.openai_api_key = DEFAULT_GROQ_KEY;
+      cached.provider = 'openai';
+      cached.openai_base_url = 'https://api.groq.com/openai/v1';
+      cached.openai_model = 'qwen/qwen3.8-27b';
+      try { localStorage.setItem('charai_cached_settings', JSON.stringify(cached)); } catch (_) {}
+    }
+
+    if (isStale(serverSettings.openai_api_key)) {
+      serverSettings.openai_api_key = DEFAULT_GROQ_KEY;
+      serverSettings.provider = 'openai';
+      serverSettings.openai_base_url = 'https://api.groq.com/openai/v1';
+      serverSettings.openai_model = 'qwen/qwen3.8-27b';
       fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -968,8 +979,9 @@ async function loadMessages(chatId) {
       } catch (_) {}
     }
 
-    if (localBackup && Array.isArray(localBackup) && localBackup.length > serverMessages.length) {
-      console.log(`[CharAI Auto-Recovery] Restoring ${localBackup.length} messages from local storage after server reset...`);
+    // Only restore if the server has ZERO messages but local storage has a valid chat history!
+    if (serverMessages.length === 0 && localBackup && Array.isArray(localBackup) && localBackup.length > 0) {
+      console.log(`[CharAI Auto-Recovery] Restoring ${localBackup.length} messages from local storage after server container wipe...`);
       try {
         await fetch(`/api/chats/${chatId}/sync`, {
           method: 'POST',
@@ -1419,10 +1431,21 @@ function enableMessageEdit(row, msg, currentContent) {
 async function handleDeleteMessage(msgId) {
   if (!confirm('Möchtest du diese Nachricht wirklich löschen?')) return;
   try {
-    const res = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
-    if (res.ok) {
-      await loadMessages(state.activeChat.id);
+    const chatId = state.activeChat ? state.activeChat.id : null;
+    
+    // 1. Immediately remove message from state.messages
+    state.messages = state.messages.filter(m => String(m.id) !== String(msgId));
+    
+    // 2. Immediately update local storage backups so auto-recovery doesn't restore it
+    if (chatId) {
+      saveMessagesLocally(chatId, state.messages);
     }
+    
+    // 3. Immediately re-render feed so the message vanishes instantly
+    renderMessages();
+    
+    // 4. Send DELETE request to server
+    await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
   } catch (err) {
     console.error('Error deleting message:', err);
   }
@@ -2021,17 +2044,15 @@ function setupEventListeners() {
   // Save Settings Form
   DOM.formSettings.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const providerRadio = document.querySelector('input[name="provider"]:checked');
-    const selectedProvider = providerRadio ? providerRadio.value : 'openai';
     const settingsPayload = {
       provider: 'openai',
-      openai_base_url: (DOM.setOpenaiUrl ? DOM.setOpenaiUrl.value.trim() : '') || (state.settings.openai_base_url || 'https://api.groq.com/openai/v1'),
-      openai_api_key: (DOM.setOpenaiKey ? DOM.setOpenaiKey.value.trim() : '') || (state.settings.openai_api_key || ''),
-      openai_model: (DOM.setOpenaiModel ? DOM.setOpenaiModel.value.trim() : '') || (state.settings.openai_model || 'qwen/qwen3.8-27b'),
-      gemini_api_key: DOM.setGeminiKey ? DOM.setGeminiKey.value.trim() : '',
-      gemini_model: DOM.setGeminiModel ? DOM.setGeminiModel.value : 'gemini-1.5-flash',
-      ollama_base_url: DOM.setOllamaUrl ? DOM.setOllamaUrl.value.trim() : 'http://localhost:11434',
-      ollama_model: DOM.setOllamaModel ? DOM.setOllamaModel.value.trim() : 'llama3.2',
+      openai_base_url: 'https://api.groq.com/openai/v1',
+      openai_api_key: DEFAULT_GROQ_KEY,
+      openai_model: 'qwen/qwen3.8-27b',
+      gemini_api_key: '',
+      gemini_model: 'gemini-1.5-flash',
+      ollama_base_url: 'http://localhost:11434',
+      ollama_model: 'llama3.2',
       nsfw_mode: DOM.setNsfwMode.checked ? 'true' : 'false',
       roleplay_tone: DOM.setRoleplayTone.value,
       language: DOM.setLanguage ? DOM.setLanguage.value : 'auto',

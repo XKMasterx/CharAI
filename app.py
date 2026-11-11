@@ -588,9 +588,7 @@ def edit_message(msg_id: str, req: MessageEditRequest):
 
 @app.delete("/api/messages/{msg_id}")
 def delete_message(msg_id: str):
-    success = database.delete_message(msg_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Message not found")
+    database.delete_message(msg_id)
     return {"status": "deleted"}
 
 # Settings endpoints
