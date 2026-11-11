@@ -112,6 +112,9 @@ class MessageEditRequest(BaseModel):
 class SwipeRequest(BaseModel):
     index: int
 
+class SyncMessagesRequest(BaseModel):
+    messages: List[Dict[str, Any]]
+
 class SettingsUpdate(BaseModel):
     settings: Dict[str, Any]
 
@@ -382,6 +385,18 @@ def list_messages(chat_id: str, request: Request):
     if chat.get("user_id") and chat["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf diesen privaten Chat.")
     return database.get_messages(chat_id)
+
+@app.post("/api/chats/{chat_id}/sync")
+def sync_chat_messages(chat_id: str, req: SyncMessagesRequest, request: Request):
+    user = get_current_user(request)
+    user_id = user["id"] if user else None
+    chat = database.get_chat_by_id(chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.get("user_id") and chat["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Kein Zugriff auf diesen privaten Chat.")
+    count = database.sync_messages(chat_id, req.messages)
+    return {"status": "synced", "inserted": count}
 
 def clean_ai_text(text: str, char_name: str = "") -> str:
     cleaned = text.strip()

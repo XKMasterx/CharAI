@@ -288,12 +288,15 @@ def stream_ai_continuation_response(character: Dict[str, Any], chat_history: Lis
 
 def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
     env_gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    env_openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     env_provider = os.environ.get("DEFAULT_AI_PROVIDER", "").strip().lower()
 
     provider = settings.get("provider", "").lower()
     if not provider or provider == "simulator":
         if env_provider:
             provider = env_provider
+        elif env_openai_key:
+            provider = "openai"
         elif env_gemini_key:
             provider = "gemini"
         else:
@@ -308,8 +311,8 @@ def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, A
     elif provider == "ollama":
         yield from stream_ollama(character, chat_history, settings, temperature)
     elif provider == "openai":
-        key = settings.get("openai_api_key", "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
-        base_url = settings.get("openai_base_url", "").strip() or os.environ.get("OPENAI_BASE_URL", "").strip()
+        key = settings.get("openai_api_key", "").strip() or env_openai_key
+        base_url = settings.get("openai_base_url", "").strip() or os.environ.get("OPENAI_BASE_URL", "https://api.groq.com/openai/v1").strip()
         is_local = "localhost" in base_url or "127.0.0.1" in base_url
         if not key and not is_local:
             yield from stream_simulator_response(character, chat_history, settings, missing_key="OpenAI / API-Schlüssel")

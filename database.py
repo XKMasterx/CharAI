@@ -680,6 +680,52 @@ def delete_message(msg_id: str) -> bool:
     conn.close()
     return deleted
 
+def sync_messages(chat_id: str, messages_list: List[Dict[str, Any]]) -> int:
+    """Synchronize or restore messages from client-side backup into the chat."""
+    if not messages_list:
+        return 0
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM messages WHERE chat_id = ?", (chat_id,))
+    existing_ids = {row["id"] for row in cursor.fetchall()}
+    
+    inserted = 0
+    for m in messages_list:
+        m_id = str(m.get("id") or "")
+        if not m_id or m_id.startswith("temp-"):
+            m_id = str(uuid.uuid4())
+        
+        if m_id not in existing_ids:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            alts = m.get("alternatives") or [content]
+            if isinstance(alts, list):
+                alts_json = json.dumps(alts)
+                cur_idx = m.get("current_index", len(alts) - 1)
+            else:
+                alts_json = json.dumps([content])
+                cur_idx = 0
+            img_url = m.get("image_url", "")
+            created_at = m.get("created_at")
+            if created_at:
+                cursor.execute("""
+                    INSERT INTO messages (id, chat_id, role, content, alternatives, current_index, image_url, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (m_id, chat_id, role, content, alts_json, cur_idx, img_url, created_at))
+            else:
+                cursor.execute("""
+                    INSERT INTO messages (id, chat_id, role, content, alternatives, current_index, image_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (m_id, chat_id, role, content, alts_json, cur_idx, img_url))
+            existing_ids.add(m_id)
+            inserted += 1
+
+    if inserted > 0:
+        cursor.execute("UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", (chat_id,))
+        conn.commit()
+    conn.close()
+    return inserted
+
 # Settings CRUD
 def get_all_settings(user_id: Optional[str] = None) -> Dict[str, str]:
     conn = get_connection()
@@ -692,6 +738,30 @@ def get_all_settings(user_id: Optional[str] = None) -> Dict[str, str]:
         for r in user_rows:
             settings_dict[r["key"]] = r["value"]
     conn.close()
+
+    # Automatic fallbacks to server environment variables if user has not explicitly configured them
+    env_openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    env_gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    env_provider = os.environ.get("DEFAULT_AI_PROVIDER", "").strip().lower()
+
+    if not settings_dict.get("openai_api_key") and env_openai_key:
+        settings_dict["openai_api_key"] = env_openai_key
+    if not settings_dict.get("openai_base_url"):
+        settings_dict["openai_base_url"] = os.environ.get("OPENAI_BASE_URL", "https://api.groq.com/openai/v1").strip()
+    if not settings_dict.get("openai_model"):
+        settings_dict["openai_model"] = os.environ.get("OPENAI_MODEL", "qwen/qwen3.8-27b").strip()
+    if not settings_dict.get("gemini_api_key") and env_gemini_key:
+        settings_dict["gemini_api_key"] = env_gemini_key
+
+    current_provider = settings_dict.get("provider", "").lower()
+    if not current_provider or current_provider == "simulator":
+        if env_provider:
+            settings_dict["provider"] = env_provider
+        elif env_openai_key:
+            settings_dict["provider"] = "openai"
+        elif env_gemini_key:
+            settings_dict["provider"] = "gemini"
+
     return settings_dict
 
 def update_settings(updates: Dict[str, str], user_id: Optional[str] = None):

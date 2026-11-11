@@ -822,6 +822,35 @@ function renderSessionsMenu() {
     handleCreateNewChat(false);
   });
   DOM.sessionsDropdownMenu.appendChild(btnEmpty);
+
+  const btnExport = document.createElement('button');
+  btnExport.className = 'dropdown-item';
+  btnExport.innerHTML = `<span>📥 Chat als Backup exportieren</span>`;
+  btnExport.addEventListener('click', () => {
+    DOM.sessionsDropdownMenu.classList.remove('show');
+    handleExportChat();
+  });
+  DOM.sessionsDropdownMenu.appendChild(btnExport);
+}
+
+function handleExportChat() {
+  if (!state.messages || state.messages.length === 0) {
+    alert('Dieser Chat hat noch keine Nachrichten zum Exportieren.');
+    return;
+  }
+  const charName = state.activeCharacter ? state.activeCharacter.name : 'Charakter';
+  const lines = [`=== Chat-Backup mit ${charName} ===\nDatum: ${new Date().toLocaleString()}\n`];
+  state.messages.forEach(m => {
+    const sender = m.role === 'user' ? 'Du' : charName;
+    lines.push(`[${sender}]:\n${m.content}\n`);
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Chat_${charName.replace(/[^a-zA-Z0-9_-]/g, '_')}_Backup.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 async function handleDeleteChat(chatId) {
@@ -874,13 +903,76 @@ async function handleCreateNewChat(includeGreeting = true) {
 // -------------------------------------------------------------
 // Messages & Feed
 // -------------------------------------------------------------
+function saveMessagesLocally(chatId, messages) {
+  if (!chatId || !Array.isArray(messages)) return;
+  try {
+    const valid = messages.filter(m => !m.id || !String(m.id).startsWith('temp-'));
+    localStorage.setItem(`charai_backup_msgs_${chatId}`, JSON.stringify(valid));
+    if (state.activeCharacter) {
+      localStorage.setItem(`charai_char_msgs_${state.activeCharacter.id}`, JSON.stringify({
+        chatId: chatId,
+        messages: valid,
+        updatedAt: Date.now()
+      }));
+    }
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+}
+
 async function loadMessages(chatId) {
   try {
     const res = await fetch(`/api/chats/${chatId}/messages`);
-    state.messages = await res.json();
+    const serverMessages = await res.json();
+
+    // Auto-Recovery from client storage (protects against Render ephemeral container wipes)
+    let localBackup = null;
+    try {
+      const raw = localStorage.getItem(`charai_backup_msgs_${chatId}`);
+      if (raw) localBackup = JSON.parse(raw);
+    } catch (_) {}
+
+    if ((!localBackup || localBackup.length <= 1) && state.activeCharacter) {
+      try {
+        const charRaw = localStorage.getItem(`charai_char_msgs_${state.activeCharacter.id}`);
+        if (charRaw) {
+          const parsed = JSON.parse(charRaw);
+          if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > (localBackup ? localBackup.length : 1)) {
+            localBackup = parsed.messages;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (localBackup && Array.isArray(localBackup) && localBackup.length > serverMessages.length) {
+      console.log(`[CharAI Auto-Recovery] Restoring ${localBackup.length} messages from local storage after server reset...`);
+      try {
+        await fetch(`/api/chats/${chatId}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: localBackup })
+        });
+        const reRes = await fetch(`/api/chats/${chatId}/messages`);
+        state.messages = await reRes.json();
+      } catch (syncErr) {
+        console.warn('Sync call failed, using local messages as view fallback:', syncErr);
+        state.messages = localBackup;
+      }
+    } else {
+      state.messages = serverMessages;
+    }
+
+    saveMessagesLocally(chatId, state.messages);
     renderMessages();
   } catch (err) {
     console.error('Fehler beim Laden der Nachrichten:', err);
+    try {
+      const raw = localStorage.getItem(`charai_backup_msgs_${chatId}`);
+      if (raw) {
+        state.messages = JSON.parse(raw);
+        renderMessages();
+      }
+    } catch (_) {}
   }
 }
 
