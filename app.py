@@ -5,7 +5,7 @@ import base64
 import asyncio
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
