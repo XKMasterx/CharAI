@@ -195,10 +195,43 @@ async function init() {
 async function loadSettings() {
   try {
     const res = await fetch('/api/settings');
-    state.settings = await res.json();
+    const serverSettings = await res.json();
+    
+    // Check cached settings in localStorage (survives Render cold restarts)
+    let cached = null;
+    try {
+      const raw = localStorage.getItem('charai_cached_settings');
+      if (raw) cached = JSON.parse(raw);
+    } catch (_) {}
+
+    // If cached settings has a valid key but server doesn't, sync cached settings to server
+    if (cached && cached.openai_api_key && (!serverSettings.openai_api_key || serverSettings.openai_api_key !== cached.openai_api_key)) {
+      serverSettings.openai_api_key = cached.openai_api_key;
+      serverSettings.openai_base_url = cached.openai_base_url || serverSettings.openai_base_url;
+      serverSettings.openai_model = cached.openai_model || serverSettings.openai_model;
+      serverSettings.provider = cached.provider || 'openai';
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: serverSettings })
+      }).catch(() => {});
+    }
+
+    state.settings = serverSettings;
+    try {
+      localStorage.setItem('charai_cached_settings', JSON.stringify(state.settings));
+    } catch (_) {}
+
     updateUIWithSettings();
   } catch (err) {
     console.error('Fehler beim Laden der Einstellungen:', err);
+    try {
+      const raw = localStorage.getItem('charai_cached_settings');
+      if (raw) {
+        state.settings = JSON.parse(raw);
+        updateUIWithSettings();
+      }
+    } catch (_) {}
   }
 }
 
@@ -2022,6 +2055,9 @@ function setupEventListeners() {
       });
       if (res.ok) {
         state.settings = settingsPayload;
+        try {
+          localStorage.setItem('charai_cached_settings', JSON.stringify(settingsPayload));
+        } catch (_) {}
         updateUIWithSettings();
         renderSessionsMenu();
         DOM.modalSettings.style.display = 'none';

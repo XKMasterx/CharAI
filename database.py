@@ -1,4 +1,5 @@
 import os
+import requests
 import sqlite3
 import json
 import uuid
@@ -10,7 +11,102 @@ from typing import List, Dict, Any, Optional
 
 DB_PATH = Path(__file__).parent / "data" / "character_ai.db"
 
+class TursoRow(dict):
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return list(self.values())[item]
+        return super().__getitem__(item)
+
+class TursoCursor:
+    def __init__(self, conn):
+        self.conn = conn
+        self._results = []
+        self._idx = 0
+        self.rowcount = 0
+
+    def execute(self, sql, params=()):
+        self._results, self.rowcount = self.conn.execute_sql(sql, params)
+        self._idx = 0
+        return self
+
+    def fetchall(self):
+        return self._results
+
+    def fetchone(self):
+        if self._idx < len(self._results):
+            row = self._results[self._idx]
+            self._idx += 1
+            return row
+        return None
+
+class TursoConnection:
+    _session = None
+
+    def __init__(self, url: str, token: str):
+        self.url = url.rstrip('/') + '/v2/pipeline' if not url.endswith('/v2/pipeline') else url
+        if self.url.startswith('libsql://'):
+            self.url = 'https://' + self.url[9:]
+        self.token = token
+        if TursoConnection._session is None:
+            TursoConnection._session = requests.Session()
+            TursoConnection._session.headers.update({
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            })
+
+    def cursor(self):
+        return TursoCursor(self)
+
+    def commit(self):
+        pass
+
+    def close(self):
+        pass
+
+    def execute_sql(self, sql, params=()):
+        formatted_args = []
+        for p in params:
+            if p is None:
+                formatted_args.append({'type': 'null'})
+            elif isinstance(p, int):
+                formatted_args.append({'type': 'integer', 'value': str(p)})
+            elif isinstance(p, float):
+                formatted_args.append({'type': 'float', 'value': p})
+            else:
+                formatted_args.append({'type': 'text', 'value': str(p)})
+        stmt = {'sql': sql}
+        if formatted_args:
+            stmt['args'] = formatted_args
+        payload = {'requests': [{'type': 'execute', 'stmt': stmt}, {'type': 'close'}]}
+        r = TursoConnection._session.post(self.url, json=payload, timeout=12)
+        if r.status_code != 200:
+            raise Exception(f'Turso error {r.status_code}: {r.text}')
+        res = r.json()['results'][0]
+        if res['type'] == 'error':
+            raise Exception(f'Turso error: {res}')
+        inner = res['response']['result']
+        cols = [c['name'] for c in inner.get('cols', [])]
+        rows = []
+        for r_list in inner.get('rows', []):
+            d = TursoRow()
+            for col_name, v_dict in zip(cols, r_list):
+                val = v_dict.get('value')
+                if v_dict.get('type') == 'integer' and val is not None:
+                    try: val = int(val)
+                    except: pass
+                elif v_dict.get('type') == 'float' and val is not None:
+                    try: val = float(val)
+                    except: pass
+                d[col_name] = val
+            rows.append(d)
+        return rows, inner.get('affected_row_count', 0)
+
 def get_connection():
+    turso_url = os.environ.get("TURSO_DATABASE_URL", "").strip()
+    turso_token = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+    if turso_url and turso_token:
+        return TursoConnection(turso_url, turso_token)
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
