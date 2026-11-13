@@ -193,6 +193,7 @@ async function init() {
 // Settings Management
 // -------------------------------------------------------------
 const DEFAULT_GROQ_KEY = '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';
+const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6LvycBTWjUTwNPmMeKbi31kPe7HOJBS2EVPa2uP2ux07Q';
 
 async function loadSettings() {
   try {
@@ -206,27 +207,14 @@ async function loadSettings() {
       if (raw) cached = JSON.parse(raw);
     } catch (_) {}
 
-    const isStale = (k) => !k || k.startsWith('gsk_Pr6N') || k.startsWith('gsk_GKPH') || k.startsWith('gsk_1twr') || k.length < 20;
-
-    if (cached && isStale(cached.openai_api_key)) {
-      cached.openai_api_key = DEFAULT_GROQ_KEY;
-      cached.provider = 'openai';
-      cached.openai_base_url = 'https://api.groq.com/openai/v1';
-      cached.openai_model = 'qwen/qwen3.8-27b';
-      try { localStorage.setItem('charai_cached_settings', JSON.stringify(cached)); } catch (_) {}
+    serverSettings.provider = serverSettings.provider || 'gemini';
+    serverSettings.gemini_model = 'gemini-2.5-flash';
+    if (!serverSettings.gemini_api_key || serverSettings.gemini_api_key.length < 20) {
+      serverSettings.gemini_api_key = DEFAULT_GEMINI_KEY;
     }
-
-    if (isStale(serverSettings.openai_api_key)) {
-      serverSettings.openai_api_key = DEFAULT_GROQ_KEY;
-      serverSettings.provider = 'openai';
-      serverSettings.openai_base_url = 'https://api.groq.com/openai/v1';
-      serverSettings.openai_model = 'qwen/qwen3.8-27b';
-      fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: serverSettings })
-      }).catch(() => {});
-    }
+    serverSettings.openai_api_key = DEFAULT_GROQ_KEY;
+    serverSettings.openai_base_url = 'https://api.groq.com/openai/v1';
+    serverSettings.openai_model = 'qwen/qwen3.8-27b';
 
     state.settings = serverSettings;
     try {
@@ -2045,12 +2033,12 @@ function setupEventListeners() {
   DOM.formSettings.addEventListener('submit', async (e) => {
     e.preventDefault();
     const settingsPayload = {
-      provider: 'openai',
+      provider: 'gemini',
+      gemini_api_key: DEFAULT_GEMINI_KEY,
+      gemini_model: 'gemini-2.5-flash',
       openai_base_url: 'https://api.groq.com/openai/v1',
       openai_api_key: DEFAULT_GROQ_KEY,
       openai_model: 'qwen/qwen3.8-27b',
-      gemini_api_key: '',
-      gemini_model: 'gemini-1.5-flash',
       ollama_base_url: 'http://localhost:11434',
       ollama_model: 'llama3.2',
       nsfw_mode: DOM.setNsfwMode.checked ? 'true' : 'false',

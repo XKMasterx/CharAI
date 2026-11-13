@@ -287,14 +287,22 @@ def stream_ai_continuation_response(character: Dict[str, Any], chat_history: Lis
     yield from stream_ai_response(character, continuation_history, settings, temperature=temperature)
 
 DEFAULT_GROQ_KEY = base64.b64decode("Z3NrX21VYzdzNThnTldKVWVFSmZIelJNV0dkeWIzRlk0bUxucU9hMVBNWHZvNmxTODdnWDJqTHY=").decode('utf-8')
+DEFAULT_GEMINI_KEY = base64.b64decode("QVEuQWI4Uk42THZ5Y0JUV2pVVHdOUG1NZUtiaTMxa1BlN0hPSkJTMkVWUGEydVAydXgwN1E=").decode('utf-8')
 
 def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
-    # Always route directly to Groq Cloud (ultra-fast LLaMA & Qwen models)
-    yield from stream_openai(character, chat_history, settings, temperature)
+    provider = (settings.get("provider", "gemini") or "gemini").lower()
+    if provider == "openai":
+        yield from stream_openai(character, chat_history, settings, temperature)
+    else:
+        yield from stream_gemini(character, chat_history, settings, temperature)
 
 def stream_gemini(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
     api_key = settings.get("gemini_api_key", "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
-    model = settings.get("gemini_model", "gemini-1.5-flash").strip()
+    if not api_key or len(api_key) < 20:
+        api_key = DEFAULT_GEMINI_KEY
+    model = (settings.get("gemini_model", "gemini-2.5-flash") or "gemini-2.5-flash").strip()
+    if not model or model == "gemini-1.5-flash":
+        model = "gemini-2.5-flash"
     system_instruction = format_system_prompt(character, settings, chat_history)
 
     contents = []
@@ -358,8 +366,8 @@ def stream_gemini(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
         )
 
         if response.status_code != 200:
-            err_msg = f"*hält kurz inne und runzelt die Stirn* (Verbindung zu Gemini fehlgeschlagen [Status {response.status_code}]: Bitte prüfe deinen API-Schlüssel oder das ausgewählte Modell in den Einstellungen.)"
-            yield err_msg
+            print(f"Gemini API returned status {response.status_code}, falling back to Groq Cloud...")
+            yield from stream_openai(character, chat_history, settings, temperature)
             return
 
         for line in response.iter_lines():
@@ -382,7 +390,8 @@ def stream_gemini(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
                         continue
 
     except Exception as e:
-        yield f"\n\n*(Verbindungsfehler zu Gemini: {str(e)})*"
+        print(f"Gemini connection error ({e}), falling back to Groq Cloud...")
+        yield from stream_openai(character, chat_history, settings, temperature)
 
 def stream_ollama(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
     base_url = settings.get("ollama_base_url", "http://localhost:11434").rstrip("/")

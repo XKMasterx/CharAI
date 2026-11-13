@@ -6,6 +6,7 @@ import uuid
 import base64
 
 DEFAULT_GROQ_KEY = base64.b64decode("Z3NrX21VYzdzNThnTldKVWVFSmZIelJNV0dkeWIzRlk0bUxucU9hMVBNWHZvNmxTODdnWDJqTHY=").decode('utf-8')
+DEFAULT_GEMINI_KEY = base64.b64decode("QVEuQWI4Uk42THZ5Y0JUV2pVVHdOUG1NZUtiaTMxa1BlN0hPSkJTMkVWUGEydVAydXgwN1E=").decode('utf-8')
 DEFAULT_TURSO_URL = base64.b64decode("bGlic3FsOi8vY2hhcmFpLXhrbWFzdGVyeC5hd3MtZXUtY2VudHJhbC0xLnR1cnNvLmlv").decode('utf-8')
 DEFAULT_TURSO_TOKEN = base64.b64decode("ZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmhJam9pY25jaUxDSnBZWFFpT2pFM09UUTBNVE0zTWpRc0ltbGtJam9pTURGaE1XTmlOak10WkdJd01TMDNNekprTFRneE9ETXRaV1kzWW1JMU5HRm1ORFEwSWl3aWEybGtJam9pZVRsdlZuTm1OVTFUY2s5NVVuSkpPWFF5WW5rMFNIcHJXVmhTUjFOUVdFa3RUM0pTUVhjNVpYaDJkeUlzSW5KcFpDSTZJbVJoWVRrd09XTTVMV1V3Tm1JdE5HUTNZUzFoTXpKaUxUZzROVGxoT0Raa01qaGhZaUo5LnN5SzRleHFINGRSa3BoTGRGMVRsMHpNZUtuUGJvckpKa0ZtNWxtWEgwZV9Fd2VFQWFFUFRxVDJLR205c2dJWnRFSUxYUUUxaHM0Rmo0UFRsUS1IN0JR").decode('utf-8')
 import hashlib
@@ -848,10 +849,21 @@ def get_all_settings(user_id: Optional[str] = None) -> Dict[str, str]:
             settings_dict[r["key"]] = r["value"]
     conn.close()
 
-    # Always enforce Groq Cloud as the active engine
-    settings_dict["provider"] = "openai"
-    settings_dict["openai_base_url"] = "https://api.groq.com/openai/v1"
+    # Enforce Gemini as primary engine
+    current_prov = (settings_dict.get("provider") or "").lower()
+    if not current_prov or current_prov in ("openai", "simulator"):
+        settings_dict["provider"] = "gemini"
     
+    gemini_key = (settings_dict.get("gemini_api_key", "") or "").strip()
+    if not gemini_key or len(gemini_key) < 20:
+        settings_dict["gemini_api_key"] = DEFAULT_GEMINI_KEY
+
+    gemini_model = (settings_dict.get("gemini_model", "") or "").strip()
+    if not gemini_model or gemini_model == "gemini-1.5-flash":
+        settings_dict["gemini_model"] = "gemini-2.5-flash"
+
+    # Also keep Groq ready as robust fallback
+    settings_dict["openai_base_url"] = "https://api.groq.com/openai/v1"
     current_model = (settings_dict.get("openai_model", "") or "").strip()
     if not current_model or current_model in ("gpt-4o-mini", "llama3.2"):
         settings_dict["openai_model"] = "qwen/qwen3.8-27b"
@@ -863,9 +875,15 @@ def get_all_settings(user_id: Optional[str] = None) -> Dict[str, str]:
     return settings_dict
 
 def update_settings(updates: Dict[str, str], user_id: Optional[str] = None):
-    # Sanitize settings to always keep Groq valid
     sanitized = dict(updates)
-    sanitized["provider"] = "openai"
+    if not sanitized.get("provider"):
+        sanitized["provider"] = "gemini"
+    gem_key = (sanitized.get("gemini_api_key") or "").strip()
+    if not gem_key or len(gem_key) < 20:
+        sanitized["gemini_api_key"] = DEFAULT_GEMINI_KEY
+    if not sanitized.get("gemini_model") or sanitized.get("gemini_model") == "gemini-1.5-flash":
+        sanitized["gemini_model"] = "gemini-2.5-flash"
+
     sanitized["openai_base_url"] = "https://api.groq.com/openai/v1"
     if not sanitized.get("openai_model") or sanitized.get("openai_model") in ("gpt-4o-mini", "llama3.2"):
         sanitized["openai_model"] = "qwen/qwen3.8-27b"
