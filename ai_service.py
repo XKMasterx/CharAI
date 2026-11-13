@@ -354,44 +354,69 @@ def stream_gemini(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
     if safety_settings:
         payload["safetySettings"] = safety_settings
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
+    # Try several Gemini models (each has its own free quota), then fall back to Groq
+    candidates_models = [model]
+    for extra in ("gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-2.5-flash"):
+        if extra not in candidates_models:
+            candidates_models.append(extra)
 
-    try:
-        response = requests.post(
-            url,
-            headers={"Content-Type": "application/json"},
-            json=payload,
-            stream=True,
-            timeout=45
-        )
+    last_err = ""
+    for mdl in candidates_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{mdl}:streamGenerateContent?key={api_key}&alt=sse"
+        try:
+            response = requests.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json=payload,
+                stream=True,
+                timeout=45
+            )
+        except Exception as e:
+            last_err = f"{mdl} Verbindungsfehler: {str(e)[:150]}".replace(api_key, "***")
+            continue
 
         if response.status_code != 200:
-            print(f"Gemini API returned status {response.status_code}, falling back to Groq Cloud...")
-            yield from stream_openai(character, chat_history, settings, temperature)
+            try:
+                body = response.text[:200].replace(api_key, "***")
+            except Exception:
+                body = ""
+            last_err = f"{mdl} {response.status_code}: {body}"
+            print(f"Gemini model {last_err}")
+            continue
+
+        got_text = False
+        try:
+            for line in response.iter_lines():
+                if line:
+                    decoded = line.decode("utf-8")
+                    if decoded.startswith("data: "):
+                        data_str = decoded[6:].strip()
+                        if not data_str:
+                            continue
+                        try:
+                            data = json.loads(data_str)
+                            cands = data.get("candidates", [])
+                            if cands:
+                                parts = cands[0].get("content", {}).get("parts", [])
+                                for p in parts:
+                                    text_chunk = p.get("text", "")
+                                    if text_chunk:
+                                        got_text = True
+                                        yield text_chunk
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            if got_text:
+                return
+            last_err = f"{mdl} Streamfehler: {str(e)[:150]}"
+            continue
+        if got_text:
             return
+        last_err = f"{mdl}: leere Antwort"
 
-        for line in response.iter_lines():
-            if line:
-                decoded = line.decode("utf-8")
-                if decoded.startswith("data: "):
-                    data_str = decoded[6:].strip()
-                    if not data_str:
-                        continue
-                    try:
-                        data = json.loads(data_str)
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            for p in parts:
-                                text_chunk = p.get("text", "")
-                                if text_chunk:
-                                    yield text_chunk
-                    except json.JSONDecodeError:
-                        continue
-
-    except Exception as e:
-        print(f"Gemini connection error ({e}), falling back to Groq Cloud...")
-        yield from stream_openai(character, chat_history, settings, temperature)
+    settings["_gemini_error"] = last_err
+    print(f"All Gemini models failed ({last_err}) -> falling back to Groq Cloud...")
+    yield from stream_openai(character, chat_history, settings, temperature)
 
 def stream_ollama(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
     base_url = settings.get("ollama_base_url", "http://localhost:11434").rstrip("/")
@@ -520,7 +545,16 @@ def stream_openai(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
     system_prompt = format_system_prompt(character, settings, chat_history)
 
     messages = [{"role": "system", "content": system_prompt}]
-    for msg in chat_history:
+    # Trim history for Groq (free tier has a small per-request token limit)
+    trimmed = []
+    budget = 9000
+    for m in reversed(chat_history):
+        budget -= len(m.get("content") or "")
+        if budget < 0 and trimmed:
+            break
+        trimmed.append(m)
+    trimmed.reverse()
+    for msg in trimmed:
         role = "user" if msg["role"] == "user" else "assistant"
         img_url = msg.get("image_url")
         if img_url and role == "user":
@@ -573,7 +607,8 @@ def stream_openai(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
                 if api_key != DEFAULT_GROQ_KEY:
                     api_key = DEFAULT_GROQ_KEY
                     continue
-                yield f"*(API Fehler {response.status_code}: Bitte überprüfe Endpunkt, API-Schlüssel und Modellname in den Einstellungen.)*"
+                extra = settings.get("_gemini_error", "")
+                yield f"*(API Fehler {response.status_code}{' | ' + extra if extra else ''}: Bitte versuche es gleich noch einmal.)*"
                 return
 
             for line in response.iter_lines():

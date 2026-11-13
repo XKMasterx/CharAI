@@ -243,8 +243,8 @@ function updateUIWithSettings() {
   const userName = state.settings.user_name || 'Reisender';
   DOM.sidebarUserName.textContent = userName;
 
-  DOM.sidebarProviderStatus.textContent = '⚡ Groq (Aktiv)';
-  DOM.sidebarProviderStatus.style.color = '#f97316';
+  DOM.sidebarProviderStatus.textContent = '✨ Gemini (Aktiv)';
+  DOM.sidebarProviderStatus.style.color = '#a855f7';
 
   const isGlobalNsfw = ['true', true, '1'].includes(state.settings.nsfw_mode);
   if (DOM.sidebarNsfwIndicator) {

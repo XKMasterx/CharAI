@@ -592,6 +592,30 @@ def delete_message(msg_id: str):
     return {"status": "deleted"}
 
 # Settings endpoints
+@app.get("/api/debug/ai")
+def debug_ai():
+    """Diagnose: tests Gemini + Groq from the server (no secrets returned)."""
+    res = {}
+    s = database.get_all_settings()
+    gkey = s.get("gemini_api_key", "")
+    try:
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gkey}",
+            json={"contents": [{"parts": [{"text": "Hi"}]}]}, timeout=20)
+        res["gemini"] = {"status": r.status_code, "body": r.text[:300].replace(gkey, "***")}
+    except Exception as e:
+        res["gemini"] = {"error": str(e)[:200].replace(gkey, "***")}
+    try:
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": "Bearer " + s.get("openai_api_key", "")},
+            json={"model": s.get("openai_model"), "messages": [{"role": "user", "content": "hi"}], "max_tokens": 5}, timeout=20)
+        res["groq"] = {"status": r.status_code, "body": r.text[:200]}
+    except Exception as e:
+        res["groq"] = {"error": str(e)[:200]}
+    res["provider"] = s.get("provider")
+    return res
+
+# Settings endpoints
 @app.get("/api/settings")
 def get_settings(request: Request):
     user = get_current_user(request)
