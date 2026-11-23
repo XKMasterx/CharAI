@@ -6,7 +6,7 @@ import uuid
 import base64
 
 DEFAULT_GROQ_KEY = base64.b64decode("Z3NrX21VYzdzNThnTldKVWVFSmZIelJNV0dkeWIzRlk0bUxucU9hMVBNWHZvNmxTODdnWDJqTHY=").decode('utf-8')
-DEFAULT_GEMINI_KEY = base64.b64decode("QVEuQWI4Uk42THZ5Y0JUV2pVVHdOUG1NZUtiaTMxa1BlN0hPSkJTMkVWUGEydVAydXgwN1E=").decode('utf-8')
+DEFAULT_GEMINI_KEY = ''
 DEFAULT_TURSO_URL = base64.b64decode("bGlic3FsOi8vY2hhcmFpLXhrbWFzdGVyeC5hd3MtZXUtY2VudHJhbC0xLnR1cnNvLmlv").decode('utf-8')
 DEFAULT_TURSO_TOKEN = base64.b64decode("ZXlKaGJHY2lPaUpGWkVSVFFTSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmhJam9pY25jaUxDSnBZWFFpT2pFM09UUTBNVE0zTWpRc0ltbGtJam9pTURGaE1XTmlOak10WkdJd01TMDNNekprTFRneE9ETXRaV1kzWW1JMU5HRm1ORFEwSWl3aWEybGtJam9pZVRsdlZuTm1OVTFUY2s5NVVuSkpPWFF5WW5rMFNIcHJXVmhTUjFOUVdFa3RUM0pTUVhjNVpYaDJkeUlzSW5KcFpDSTZJbVJoWVRrd09XTTVMV1V3Tm1JdE5HUTNZUzFoTXpKaUxUZzROVGxoT0Raa01qaGhZaUo5LnN5SzRleHFINGRSa3BoTGRGMVRsMHpNZUtuUGJvckpKa0ZtNWxtWEgwZV9Fd2VFQWFFUFRxVDJLR205c2dJWnRFSUxYUUUxaHM0Rmo0UFRsUS1IN0JR").decode('utf-8')
 import hashlib
@@ -854,8 +854,11 @@ def get_all_settings(user_id: Optional[str] = None) -> Dict[str, str]:
     if not current_prov or current_prov in ("openai", "simulator"):
         settings_dict["provider"] = "gemini"
     
+    env_gem = os.environ.get("GEMINI_API_KEY", "").strip()
     gemini_key = (settings_dict.get("gemini_api_key", "") or "").strip()
-    if not gemini_key or len(gemini_key) < 20:
+    if env_gem and len(env_gem) >= 20:
+        settings_dict["gemini_api_key"] = env_gem
+    elif not gemini_key or len(gemini_key) < 20:
         settings_dict["gemini_api_key"] = DEFAULT_GEMINI_KEY
 
     gemini_model = (settings_dict.get("gemini_model", "") or "").strip()
@@ -880,7 +883,7 @@ def update_settings(updates: Dict[str, str], user_id: Optional[str] = None):
         sanitized["provider"] = "gemini"
     gem_key = (sanitized.get("gemini_api_key") or "").strip()
     if not gem_key or len(gem_key) < 20:
-        sanitized["gemini_api_key"] = DEFAULT_GEMINI_KEY
+        sanitized.pop("gemini_api_key", None)  # keep the stored key untouched
     if not sanitized.get("gemini_model") or sanitized.get("gemini_model") == "gemini-1.5-flash":
         sanitized["gemini_model"] = "gemini-2.5-flash"
 
@@ -889,7 +892,7 @@ def update_settings(updates: Dict[str, str], user_id: Optional[str] = None):
         sanitized["openai_model"] = "qwen/qwen3.8-27b"
     key = (sanitized.get("openai_api_key") or "").strip()
     if not key or key.startswith("gsk_Pr6N") or key.startswith("gsk_1twr") or key.startswith("gsk_GKPH") or len(key) < 20:
-        sanitized["openai_api_key"] = DEFAULT_GROQ_KEY
+        sanitized.pop("openai_api_key", None)  # keep the stored key untouched
 
     conn = get_connection()
     cursor = conn.cursor()

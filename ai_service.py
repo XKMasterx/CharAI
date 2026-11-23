@@ -287,7 +287,7 @@ def stream_ai_continuation_response(character: Dict[str, Any], chat_history: Lis
     yield from stream_ai_response(character, continuation_history, settings, temperature=temperature)
 
 DEFAULT_GROQ_KEY = base64.b64decode("Z3NrX21VYzdzNThnTldKVWVFSmZIelJNV0dkeWIzRlk0bUxucU9hMVBNWHZvNmxTODdnWDJqTHY=").decode('utf-8')
-DEFAULT_GEMINI_KEY = base64.b64decode("QVEuQWI4Uk42THZ5Y0JUV2pVVHdOUG1NZUtiaTMxa1BlN0hPSkJTMkVWUGEydVAydXgwN1E=").decode('utf-8')
+DEFAULT_GEMINI_KEY = ''
 
 def stream_ai_response(character: Dict[str, Any], chat_history: List[Dict[str, Any]], settings: Dict[str, str], temperature: float = 0.85) -> Generator[str, None, None]:
     provider = (settings.get("provider", "gemini") or "gemini").lower()
