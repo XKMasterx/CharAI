@@ -591,6 +591,13 @@ def delete_message(msg_id: str):
     database.delete_message(msg_id)
     return {"status": "deleted"}
 
+def _public_settings(s):
+    """Never expose API keys to the browser."""
+    out = dict(s)
+    for k in ("openai_api_key", "gemini_api_key"):
+        out[k] = ""
+    return out
+
 # Settings endpoints
 @app.get("/api/debug/ai")
 def debug_ai():
@@ -620,14 +627,14 @@ def debug_ai():
 def get_settings(request: Request):
     user = get_current_user(request)
     user_id = user["id"] if user else None
-    return database.get_all_settings(user_id=user_id)
+    return _public_settings(database.get_all_settings(user_id=user_id))
 
 @app.post("/api/settings")
 def update_settings(payload: SettingsUpdate, request: Request):
     user = get_current_user(request)
     user_id = user["id"] if user else None
     database.update_settings(payload.settings, user_id=user_id)
-    return {"status": "saved", "settings": database.get_all_settings(user_id=user_id)}
+    return {"status": "saved", "settings": _public_settings(database.get_all_settings(user_id=user_id))}
 
 if __name__ == "__main__":
     import uvicorn

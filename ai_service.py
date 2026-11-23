@@ -305,6 +305,17 @@ def stream_gemini(character: Dict[str, Any], chat_history: List[Dict[str, Any]],
         model = "gemini-2.5-flash"
     system_instruction = format_system_prompt(character, settings, chat_history)
 
+    # Keep requests small: only the most recent part of long chats is sent (saves quota/tokens)
+    _trimmed = []
+    _budget = 12000
+    for _m in reversed(chat_history):
+        _budget -= len(_m.get("content") or "")
+        if _budget < 0 and _trimmed:
+            break
+        _trimmed.append(_m)
+    _trimmed.reverse()
+    chat_history = _trimmed
+
     contents = []
     for msg in chat_history:
         role = "user" if msg["role"] == "user" else "model"

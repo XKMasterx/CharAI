@@ -192,8 +192,6 @@ async function init() {
 // -------------------------------------------------------------
 // Settings Management
 // -------------------------------------------------------------
-const DEFAULT_GROQ_KEY = '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';
-const DEFAULT_GEMINI_KEY = 'AQ.Ab8RN6LvycBTWjUTwNPmMeKbi31kPe7HOJBS2EVPa2uP2ux07Q';
 
 async function loadSettings() {
   try {
@@ -210,9 +208,9 @@ async function loadSettings() {
     serverSettings.provider = serverSettings.provider || 'gemini';
     serverSettings.gemini_model = 'gemini-2.5-flash';
     if (!serverSettings.gemini_api_key || serverSettings.gemini_api_key.length < 20) {
-      serverSettings.gemini_api_key = DEFAULT_GEMINI_KEY;
+      serverSettings.gemini_api_key = '';
     }
-    serverSettings.openai_api_key = DEFAULT_GROQ_KEY;
+    serverSettings.openai_api_key = '';
     serverSettings.openai_base_url = 'https://api.groq.com/openai/v1';
     serverSettings.openai_model = 'qwen/qwen3.8-27b';
 
@@ -2034,10 +2032,10 @@ function setupEventListeners() {
     e.preventDefault();
     const settingsPayload = {
       provider: 'gemini',
-      gemini_api_key: DEFAULT_GEMINI_KEY,
+      gemini_api_key: '',
       gemini_model: 'gemini-2.5-flash',
       openai_base_url: 'https://api.groq.com/openai/v1',
-      openai_api_key: DEFAULT_GROQ_KEY,
+      openai_api_key: '',
       openai_model: 'qwen/qwen3.8-27b',
       ollama_base_url: 'http://localhost:11434',
       ollama_model: 'llama3.2',
